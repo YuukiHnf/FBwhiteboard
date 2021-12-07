@@ -1,17 +1,21 @@
 import rough from 'roughjs/bundled/rough.esm';
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useDrawing } from '../hooks/useDrawingHook';
 import { useIsDrawing } from '../hooks/useIsDrawing';
 import { useSquare } from '../hooks/useSquareHook';
 import { Swatch } from './Swatch';
 import { useCircle } from '../hooks/useCircleHook';
+import {ref, update } from 'firebase/database';
+import { realtimeDB } from '../firebase';
 
 const gen = rough.generator();
 
+const dbRooms = ['circle_room', 'rect_room', 'line_room'];
+
 export const DrawingTool = () => {
-    const [lineElements, setLineElements, lineChangeLastElement] = useDrawing();
-    const [squareElements, setSquareElement, squareChangeElement] = useSquare();
-    const [circleElements, setCircleElement, circleChangeElement, getCircleElement] = useCircle();
+    const [lineElements, setLineElements, lineChangeLastElement, onLineFinDrawing] = useDrawing('line_room');
+    const [squareElements, setSquareElement, squareChangeElement, onSquareFinDrawing] = useSquare('rect_room');
+    const [circleElements, setCircleElement, circleChangeElement, getCircleElement, onCircleFinDrawing] = useCircle('circle_room');
     const [isDrawing, setIsDrawing] = useIsDrawing();
     const [action, setAction] = useState('none');
 
@@ -46,15 +50,20 @@ export const DrawingTool = () => {
 
     const onMouseUp = (e) => {
         setIsDrawing(false);
-        console.log(lineElements);
+        action === 'line' && onLineFinDrawing();
+        action === 'cube' && onSquareFinDrawing();
+        action === 'circle' && onCircleFinDrawing();
+        //console.log(lineElements);
     }
 
     const onCleanUp = useCallback(() => {
-        setLineElements([]);
-        setSquareElement([]);
-        setCircleElement([]);
+        const updates = {};
+        dbRooms.forEach((key) => {
+            updates[key] = [];
+        })
+        update(ref(realtimeDB), updates);
     },[]);
-
+    
     useEffect(() => {
         const canvas = document.getElementById('canvas');
         const context = canvas.getContext('2d');
@@ -62,15 +71,16 @@ export const DrawingTool = () => {
         context.clearRect(0,0,canvas.width,canvas.height);
 
         const rc = rough.canvas(canvas);
-        lineElements.forEach((ele) => {
+        
+        lineElements !== null && lineElements.forEach((ele) => {
             rc.draw(gen.line(ele.x1,ele.y1,ele.x2, ele.y2));
         });
-        squareElements.forEach((ele) => {
+        squareElements !== null && (squareElements.forEach((ele) => {
             rc.draw(gen.rectangle(ele.x1,ele.y1,(ele.x2-ele.x1),(ele.y2-ele.y1)));
-        });
-        circleElements.forEach((ele) => {
+        }));
+        circleElements !== null && (circleElements.forEach((ele) => {
             rc.draw(getCircleElement(ele));
-        });
+        }));
     },[lineElements, squareElements, circleElements]);
 
 

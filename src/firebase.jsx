@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, child, get } from 'firebase/database';
+import { getDatabase, ref, child, get, update } from 'firebase/database';
+import { useCallback } from "react";
 
 export const firebaseConfig = {
     apiKey: "AIzaSyAJs7E2Trp9aB6pFRIvNyjtqa8edKXpArU",
@@ -15,3 +16,26 @@ export const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 
 export const realtimeDB = getDatabase();
+
+export const dbRooms = ['line_room', 'rect_room', 'circle_room'];
+
+export const getDatabaseFrom = (dbRef, room_name) => {
+    get(child(dbRef, room_name)).then((snapshot) => {
+        if(snapshot.exists()){
+            const hashData = snapshot.val();
+            let initElement = []
+            Object.keys(hashData).forEach(key => {
+                //console.log(room_name,hashData[key]);
+                initElement = [...initElement, Object.assign({}, hashData[key])];
+            });
+            //console.log(initElement);
+            return initElement;
+        }else{
+            console.log('[MyError]No data available');
+            return [];
+        }
+    }).catch((e) => {
+        console.error('[then/Catch Error]',e);
+    })
+}
+
